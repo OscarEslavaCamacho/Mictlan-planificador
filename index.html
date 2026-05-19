@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0a0d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Planificador">
+<title>Planificador — Mictlán del tiempo</title>
+<link rel="manifest" href="manifest.json">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg0:#0a0a0d;--bg1:#13131a;--bg2:#1c1c26;--bg3:#252532;
+  --br:#32323f;--br2:#44445a;
+  --tx0:#ede8f5;--tx1:#9b97b5;--tx2:#5a5870;
+  --acc:#9b8fe8;--acc2:#6b5fd4;--acc3:#4a3fa8;
+  --todo-bg:#0c1829;--todo-t:#85b7eb;--todo-b:#185FA5;
+  --today-bg:#091f19;--today-t:#5DCAA5;--today-b:#0F6E56;
+  --shop-bg:#1e1305;--shop-t:#EF9F27;--shop-b:#854F0B;
+  --danger:#E24B4A;--rad:10px;--rad-lg:14px
+}
+html,body{height:100%;background:var(--bg0);color:var(--tx0);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px}
+.app{max-width:440px;margin:0 auto;padding:14px 12px 80px;min-height:100vh;position:relative}
+
+/* HEADER */
+.header{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:6px 2px}
+.logo-svg{width:40px;height:40px;flex-shrink:0}
+.header-text h1{font-size:16px;font-weight:600;color:var(--tx0);letter-spacing:.3px}
+.header-text p{font-size:10px;color:var(--tx2);letter-spacing:.9px;text-transform:uppercase;margin-top:2px}
+
+/* TABS */
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tab{flex:1;padding:8px 4px;font-size:12px;font-weight:500;border:0.5px solid var(--br);border-radius:var(--rad);background:var(--bg1);color:var(--tx1);cursor:pointer;text-align:center;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px;-webkit-tap-highlight-color:transparent}
+.tab.active{background:var(--bg2);color:var(--tx0);border-color:var(--acc3)}
+.tab svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+
+/* SECTIONS */
+.section{display:none}.section.active{display:block}
+
+/* CARDS */
+.card{background:var(--bg1);border:0.5px solid var(--br);border-radius:var(--rad-lg);padding:14px;margin-bottom:10px}
+.card h2{font-size:13px;font-weight:500;color:var(--tx1);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.card h2 svg{width:15px;height:15px;stroke:var(--acc);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* FORM */
+input,textarea,select{width:100%;padding:9px 11px;font-size:13px;font-family:inherit;border:0.5px solid var(--br);border-radius:var(--rad);background:var(--bg2);color:var(--tx0);outline:none;margin-bottom:8px;transition:border-color .15s;-webkit-appearance:none}
+input:focus,textarea:focus{border-color:var(--acc3)}
+textarea{resize:vertical;min-height:66px}
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(.6)}
+::placeholder{color:var(--tx2)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+label{font-size:11px;color:var(--tx2);display:block;margin-bottom:3px;margin-top:2px}
+
+/* BUTTONS */
+.btn{padding:9px 14px;font-size:13px;font-weight:500;border:0.5px solid var(--br);border-radius:var(--rad);background:var(--bg2);color:var(--tx0);cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;justify-content:center;-webkit-tap-highlight-color:transparent}
+.btn:active{opacity:.8;transform:scale(.98)}
+.btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.btn-primary{background:var(--acc3);color:#ede8f5;border-color:var(--acc3)}
+.btn-primary:active{background:var(--acc2)}
+.btn-full{width:100%}
+.btn-sm{padding:5px 9px;font-size:11px;border-radius:7px}
+.btn-sm svg{width:12px;height:12px}
+.btn-danger{color:var(--danger);border-color:transparent;background:transparent}
+.btn-danger:active{background:#2a1515}
+
+/* INBOX */
+.inbox-item{background:var(--bg2);border:0.5px solid var(--br);border-radius:var(--rad);padding:11px 13px;margin-bottom:8px}
+.inbox-item .title{font-size:13px;font-weight:500;color:var(--tx0);margin-bottom:5px}
+.inbox-item .meta{font-size:11px;color:var(--tx1);margin-bottom:7px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.inbox-item .meta span{display:flex;align-items:center;gap:3px}
+.inbox-item .meta svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.inbox-item .note{font-size:11px;color:var(--tx2);margin-bottom:8px;font-style:italic;padding:6px 9px;background:var(--bg3);border-radius:6px;border-left:2px solid var(--acc3)}
+.inbox-item .actions{display:flex;gap:5px;flex-wrap:wrap}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:500}
+.b-todo{background:var(--todo-bg);color:var(--todo-t);border:0.5px solid var(--todo-b)}
+.b-today{background:var(--today-bg);color:var(--today-t);border:0.5px solid var(--today-b)}
+.b-shop{background:var(--shop-bg);color:var(--shop-t);border:0.5px solid var(--shop-b)}
+
+/* KANBAN */
+.kanban{display:flex;flex-direction:column;gap:10px}
+.kcol{border-radius:var(--rad-lg);border:0.5px solid var(--br);overflow:hidden}
+.kcol-header{padding:11px 14px;font-size:12px;font-weight:500;display:flex;align-items:center;justify-content:space-between}
+.kcol-header .col-title{display:flex;align-items:center;gap:6px}
+.kcol-header svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.kcol-todo .kcol-header{background:var(--todo-bg);color:var(--todo-t)}
+.kcol-today .kcol-header{background:var(--today-bg);color:var(--today-t)}
+.kcol-shop .kcol-header{background:var(--shop-bg);color:var(--shop-t)}
+.kcol-body{padding:8px;background:var(--bg1);min-height:52px}
+.kitem{background:var(--bg2);border:0.5px solid var(--br);border-radius:var(--rad);padding:9px 11px;margin-bottom:6px}
+.kitem .ktitle{font-size:13px;font-weight:500;color:var(--tx0)}
+.kitem .kmeta{font-size:11px;color:var(--tx1);margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.kitem .kmeta svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.kitem .knote{font-size:11px;color:var(--tx2);margin-top:4px;font-style:italic}
+.kitem .kactions{display:flex;gap:4px;margin-top:8px;flex-wrap:wrap}
+
+/* CALENDARIO */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:12px}
+.cal-head{text-align:center;font-size:10px;color:var(--tx2);padding:5px 0;font-weight:500}
+.cal-day{text-align:center;padding:8px 2px;font-size:12px;border-radius:7px;cursor:pointer;color:var(--tx1);transition:background .1s;position:relative;-webkit-tap-highlight-color:transparent}
+.cal-day:active{background:var(--bg3)}
+.cal-day.today{font-weight:600;background:var(--todo-bg);color:var(--todo-t)}
+.cal-day.selected{background:var(--acc3);color:#ede8f5}
+.cal-day.has-note::after{content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:4px;height:4px;background:#5DCAA5;border-radius:50%}
+.cal-day.empty{cursor:default}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cal-nav span{font-size:14px;font-weight:500;color:var(--tx0)}
+.cal-nav .btn svg{width:14px;height:14px}
+.note-area{display:none;margin-top:12px;border-top:0.5px solid var(--br);padding-top:12px}
+.note-area.show{display:block}
+.note-fecha{font-size:11px;font-weight:500;color:var(--tx1);margin-bottom:7px;display:flex;align-items:center;gap:5px}
+.note-fecha svg{width:13px;height:13px;stroke:var(--acc);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* EMPTY */
+.empty-msg{text-align:center;padding:22px;font-size:12px;color:var(--tx2)}
+.empty-msg svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;display:block;margin:0 auto 8px;opacity:.35}
+
+/* FAB */
+.fab{position:fixed;bottom:22px;right:18px;width:52px;height:52px;border-radius:50%;background:var(--acc3);border:0.5px solid var(--acc2);color:#ede8f5;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;z-index:100;-webkit-tap-highlight-color:transparent}
+.fab:active{transform:scale(.94)}
+.fab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* PANEL NOTAS RÁPIDAS */
+.quick-panel{position:fixed;bottom:86px;right:14px;width:300px;background:var(--bg1);border:0.5px solid var(--br2);border-radius:var(--rad-lg);padding:14px;z-index:99;display:none}
+.quick-panel.show{display:block}
+.qp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.qp-title{font-size:13px;font-weight:500;color:var(--tx0);display:flex;align-items:center;gap:6px}
+.qp-title svg{width:15px;height:15px;stroke:var(--acc);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.qp-list{max-height:210px;overflow-y:auto;margin-bottom:8px}
+.qnote{background:var(--bg2);border:0.5px solid var(--br);border-radius:var(--rad);padding:9px 10px;margin-bottom:6px;position:relative}
+.qnote .qtxt{font-size:12px;color:var(--tx0);white-space:pre-wrap;padding-right:22px;line-height:1.5}
+.qnote .qdate{font-size:10px;color:var(--tx2);margin-top:3px}
+.qnote .qdel{position:absolute;top:7px;right:7px;background:none;border:none;color:var(--tx2);cursor:pointer;font-size:14px;padding:2px;line-height:1;display:flex;align-items:center}
+.qnote .qdel:active{color:var(--danger)}
+.qnote .qdel svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.qp-input{display:flex;gap:6px;align-items:flex-end}
+.qp-input textarea{margin-bottom:0;min-height:42px;font-size:12px;flex:1}
+
+/* INSTALL BANNER */
+.install-banner{background:var(--bg2);border:0.5px solid var(--acc3);border-radius:var(--rad);padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;display:none}
+.install-banner.show{display:flex}
+.install-banner p{font-size:12px;color:var(--tx1);flex:1}
+.install-banner p strong{color:var(--tx0)}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- INSTALL BANNER -->
+  <div class="install-banner" id="install-banner">
+    <p><strong>Instalar app</strong> — agrégala a tu pantalla de inicio para usarla sin navegador.</p>
+    <button class="btn btn-sm btn-primary" id="install-btn">Instalar</button>
+    <button class="btn btn-sm btn-danger" id="install-dismiss">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <!-- HEADER -->
+  <div class="header">
+    <svg class="logo-svg" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+      <rect width="40" height="40" rx="10" fill="#13131a"/>
+      <rect width="40" height="40" rx="10" fill="#1c1222" opacity=".5"/>
+      <!-- tocado puntiagudo -->
+      <polygon points="20,2 17,8 23,8" fill="#9b8fe8" opacity=".85"/>
+      <polygon points="14,4 12,10 18,9" fill="#6b5fd4" opacity=".65"/>
+      <polygon points="26,4 28,10 22,9" fill="#6b5fd4" opacity=".65"/>
+      <line x1="14" y1="8" x2="26" y2="8" stroke="#9b8fe8" stroke-width=".6" opacity=".4"/>
+      <!-- cráneo -->
+      <ellipse cx="20" cy="18" rx="8.5" ry="9.5" fill="#9b8fe8" opacity=".12"/>
+      <ellipse cx="20" cy="18" rx="8.5" ry="9.5" fill="none" stroke="#9b8fe8" stroke-width="1"/>
+      <!-- ojos -->
+      <ellipse cx="16.2" cy="16" rx="2.4" ry="2.6" fill="#0a0a0d"/>
+      <ellipse cx="23.8" cy="16" rx="2.4" ry="2.6" fill="#0a0a0d"/>
+      <ellipse cx="16.2" cy="16" rx="1.4" ry="1.6" fill="#9b8fe8" opacity=".55"/>
+      <ellipse cx="23.8" cy="16" rx="1.4" ry="1.6" fill="#9b8fe8" opacity=".55"/>
+      <!-- nariz -->
+      <path d="M18.8 20.5 L20 19 L21.2 20.5 L20.7 22 L19.3 22Z" fill="#6b5fd4" opacity=".75"/>
+      <!-- mandíbula -->
+      <rect x="12.5" y="23" width="15" height="5.5" rx="2.5" fill="none" stroke="#9b8fe8" stroke-width=".9"/>
+      <!-- dientes -->
+      <line x1="15.5" y1="23" x2="15.5" y2="28.5" stroke="#9b8fe8" stroke-width=".7" opacity=".6"/>
+      <line x1="18.2" y1="23" x2="18.2" y2="28.5" stroke="#9b8fe8" stroke-width=".7" opacity=".6"/>
+      <line x1="21.8" y1="23" x2="21.8" y2="28.5" stroke="#9b8fe8" stroke-width=".7" opacity=".6"/>
+      <line x1="24.5" y1="23" x2="24.5" y2="28.5" stroke="#9b8fe8" stroke-width=".7" opacity=".6"/>
+      <!-- detalles laterales -->
+      <circle cx="12" cy="19" r=".9" fill="#9b8fe8" opacity=".45"/>
+      <circle cx="28" cy="19" r=".9" fill="#9b8fe8" opacity=".45"/>
+      <!-- líneas decorativas base -->
+      <line x1="14" y1="28.5" x2="26" y2="28.5" stroke="#6b5fd4" stroke-width=".5" opacity=".45"/>
+      <line x1="16" y1="31" x2="24" y2="31" stroke="#6b5fd4" stroke-width=".5" opacity=".35"/>
+    </svg>
+    <div class="header-text">
+      <h1>Planificador</h1>
+      <p>Mictlán del tiempo</p>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('buzon')" id="tab-buzon">
+      <svg viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>
+      Buzón
+    </div>
+    <div class="tab" onclick="showTab('tablero')" id="tab-tablero">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Tablero
+    </div>
+    <div class="tab" onclick="showTab('calendario')" id="tab-calendario">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Calendario
+    </div>
+  </div>
+
+  <!-- BUZÓN -->
+  <div id="buzon" class="section active">
+    <div class="card">
+      <h2>
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nueva actividad
+      </h2>
+      <label>Nombre de la actividad</label>
+      <input type="text" id="act-titulo" placeholder="¿Qué hay que hacer?">
+      <label>Notas o descripción</label>
+      <textarea id="act-nota" placeholder="Detalles opcionales..."></textarea>
+      <div class="row">
+        <div>
+          <label>Minutos estimados</label>
+          <input type="number" id="act-min" placeholder="30" min="0">
+        </div>
+        <div>
+          <label>Hora</label>
+          <input type="time" id="act-hora">
+        </div>
+      </div>
+      <label>Fecha</label>
+      <input type="date" id="act-fecha">
+      <button class="btn btn-primary btn-full" onclick="agregarActividad()">
+        <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Agregar al buzón
+      </button>
+    </div>
+    <div id="inbox-lista"></div>
+  </div>
+
+  <!-- TABLERO -->
+  <div id="tablero" class="section">
+    <div class="kanban">
+      <div class="kcol kcol-todo">
+        <div class="kcol-header">
+          <span class="col-title">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-dasharray="4 2"/></svg>
+            Por hacer
+          </span>
+          <span id="cnt-todo" class="badge b-todo">0</span>
+        </div>
+        <div class="kcol-body" id="col-todo"></div>
+      </div>
+      <div class="kcol kcol-today">
+        <div class="kcol-header">
+          <span class="col-title">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            Para hoy
+          </span>
+          <span id="cnt-today" class="badge b-today">0</span>
+        </div>
+        <div class="kcol-body" id="col-today"></div>
+      </div>
+      <div class="kcol kcol-shop">
+        <div class="kcol-header">
+          <span class="col-title">
+            <svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+            Lista de compras
+          </span>
+          <span id="cnt-shop" class="badge b-shop">0</span>
+        </div>
+        <div class="kcol-body" id="col-shop"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CALENDARIO -->
+  <div id="calendario" class="section">
+    <div class="card">
+      <div class="cal-nav">
+        <button class="btn btn-sm" onclick="cambiarMes(-1)">
+          <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <span id="cal-titulo"></span>
+        <button class="btn btn-sm" onclick="cambiarMes(1)">
+          <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div class="note-area" id="note-area">
+        <div class="note-fecha">
+          <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <span id="note-fecha-label"></span>
+        </div>
+        <textarea id="note-text" placeholder="Escribe una nota para este día..."></textarea>
+        <button class="btn btn-primary btn-sm" onclick="guardarNota()">
+          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          Guardar nota
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FAB -->
+<button class="fab" onclick="toggleQuick()" id="fab-btn" aria-label="Notas rápidas">
+  <svg id="fab-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+</button>
+
+<!-- PANEL NOTAS RÁPIDAS -->
+<div class="quick-panel" id="quick-panel">
+  <div class="qp-header">
+    <div class="qp-title">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Notas rápidas
+    </div>
+    <button class="btn btn-sm btn-danger" onclick="toggleQuick()">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="qp-list" id="qp-list"></div>
+  <div class="qp-input">
+    <textarea id="qp-text" placeholder="Escribe una nota..."></textarea>
+    <button class="btn btn-primary btn-sm" onclick="agregarQnota()">
+      <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+let data = JSON.parse(localStorage.getItem('planificador_v1') || '{"inbox":[],"tablero":{"todo":[],"today":[],"shop":[]},"notas":{},"qnotas":[]}');
+let calYear, calMonth, calSelDay = null, qOpen = false;
+
+function save() { localStorage.setItem('planificador_v1', JSON.stringify(data)); }
+
+function showTab(t) {
+  ['buzon','tablero','calendario'].forEach(id => {
+    document.getElementById('tab-' + id).classList.toggle('active', id === t);
+    document.getElementById(id).classList.toggle('active', id === t);
+  });
+  if (t === 'tablero') renderTablero();
+  if (t === 'calendario') renderCal();
+}
+
+function agregarActividad() {
+  const titulo = document.getElementById('act-titulo').value.trim();
+  if (!titulo) return;
+  data.inbox.push({
+    id: Date.now(),
+    titulo,
+    nota: document.getElementById('act-nota').value.trim(),
+    minutos: document.getElementById('act-min').value,
+    hora: document.getElementById('act-hora').value,
+    fecha: document.getElementById('act-fecha').value
+  });
+  save();
+  ['act-titulo','act-nota','act-min','act-hora','act-fecha'].forEach(id => document.getElementById(id).value = '');
+  renderInbox();
+}
+
+function iconSVG(type) {
+  const icons = {
+    clock: '<svg style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+    alarm: '<svg style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><polyline points="12 9 12 13 14.5 11"/><line x1="5" y1="3" x2="2.5" y2="5.5"/><line x1="19" y1="3" x2="21.5" y2="5.5"/></svg>',
+    cal: '<svg style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+    trash: '<svg style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>'
+  };
+  return icons[type] || '';
+}
+
+function metaHtml(a) {
+  let m = '';
+  if (a.minutos) m += `<span>${iconSVG('clock')} ${a.minutos} min</span>`;
+  if (a.hora) m += `<span>${iconSVG('alarm')} ${a.hora}</span>`;
+  if (a.fecha) m += `<span>${iconSVG('cal')} ${a.fecha}</span>`;
+  return m;
+}
+
+function renderInbox() {
+  const el = document.getElementById('inbox-lista');
+  if (!data.inbox.length) {
+    el.innerHTML = `<div class="empty-msg"><svg viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>El buzón está vacío</div>`;
+    return;
+  }
+  el.innerHTML = data.inbox.map(a => `
+    <div class="inbox-item">
+      <div class="title">${a.titulo}</div>
+      <div class="meta">${metaHtml(a)}</div>
+      ${a.nota ? `<div class="note">${a.nota}</div>` : ''}
+      <div class="actions">
+        <button class="btn btn-sm b-todo" onclick="moverA(${a.id},'todo')">Por hacer</button>
+        <button class="btn btn-sm b-today" onclick="moverA(${a.id},'today')">Para hoy</button>
+        <button class="btn btn-sm b-shop" onclick="moverA(${a.id},'shop')">Compras</button>
+        <button class="btn btn-sm btn-danger" onclick="eliminarInbox(${a.id})">${iconSVG('trash')}</button>
+      </div>
+    </div>`).join('');
+}
+
+function moverA(id, col) {
+  const idx = data.inbox.findIndex(a => a.id === id);
+  if (idx === -1) return;
+  data.tablero[col].push(data.inbox[idx]);
+  data.inbox.splice(idx, 1);
+  save(); renderInbox();
+}
+
+function eliminarInbox(id) {
+  data.inbox = data.inbox.filter(a => a.id !== id);
+  save(); renderInbox();
+}
+
+function renderTablero() {
+  ['todo','today','shop'].forEach(col => {
+    const el = document.getElementById('col-' + col);
+    document.getElementById('cnt-' + col).textContent = data.tablero[col].length;
+    if (!data.tablero[col].length) {
+      el.innerHTML = '<div class="empty-msg">Sin actividades</div>';
+      return;
+    }
+    el.innerHTML = data.tablero[col].map(a => `
+      <div class="kitem">
+        <div class="ktitle">${a.titulo}</div>
+        <div class="kmeta">${metaHtml(a)}</div>
+        ${a.nota ? `<div class="knote">${a.nota}</div>` : ''}
+        <div class="kactions">
+          ${col !== 'todo' ? `<button class="btn btn-sm b-todo" onclick="moverTablero(${a.id},'${col}','todo')">Por hacer</button>` : ''}
+          ${col !== 'today' ? `<button class="btn btn-sm b-today" onclick="moverTablero(${a.id},'${col}','today')">Para hoy</button>` : ''}
+          ${col !== 'shop' ? `<button class="btn btn-sm b-shop" onclick="moverTablero(${a.id},'${col}','shop')">Compras</button>` : ''}
+          <button class="btn btn-sm btn-danger" onclick="eliminarTablero(${a.id},'${col}')">${iconSVG('trash')}</button>
+        </div>
+      </div>`).join('');
+  });
+}
+
+function moverTablero(id, from, to) {
+  const idx = data.tablero[from].findIndex(a => a.id === id);
+  if (idx === -1) return;
+  data.tablero[to].push(data.tablero[from][idx]);
+  data.tablero[from].splice(idx, 1);
+  save(); renderTablero();
+}
+
+function eliminarTablero(id, col) {
+  data.tablero[col] = data.tablero[col].filter(a => a.id !== id);
+  save(); renderTablero();
+}
+
+function renderCal() {
+  const now = new Date();
+  if (calYear === undefined) { calYear = now.getFullYear(); calMonth = now.getMonth(); }
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  document.getElementById('cal-titulo').textContent = meses[calMonth] + ' ' + calYear;
+  const dias = ['D','L','M','X','J','V','S'];
+  let html = dias.map(d => `<div class="cal-head">${d}</div>`).join('');
+  const first = new Date(calYear, calMonth, 1).getDay();
+  const total = new Date(calYear, calMonth + 1, 0).getDate();
+  for (let i = 0; i < first; i++) html += `<div class="cal-day empty"></div>`;
+  for (let d = 1; d <= total; d++) {
+    const key = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = d === now.getDate() && calMonth === now.getMonth() && calYear === now.getFullYear();
+    const isSel = calSelDay === key;
+    const hasNote = data.notas[key] && data.notas[key].trim();
+    html += `<div class="cal-day${isToday?' today':''}${isSel?' selected':''}${hasNote?' has-note':''}" onclick="selDay('${key}')">${d}</div>`;
+  }
+  document.getElementById('cal-grid').innerHTML = html;
+  if (calSelDay) showNoteArea(calSelDay);
+}
+
+function cambiarMes(d) {
+  calMonth += d;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  renderCal();
+}
+
+function selDay(key) { calSelDay = key; renderCal(); showNoteArea(key); }
+
+function showNoteArea(key) {
+  document.getElementById('note-area').classList.add('show');
+  document.getElementById('note-fecha-label').textContent = 'Nota para: ' + key;
+  document.getElementById('note-text').value = data.notas[key] || '';
+}
+
+function guardarNota() {
+  if (!calSelDay) return;
+  data.notas[calSelDay] = document.getElementById('note-text').value;
+  save(); renderCal();
+}
+
+function toggleQuick() {
+  qOpen = !qOpen;
+  document.getElementById('quick-panel').classList.toggle('show', qOpen);
+  const icon = document.getElementById('fab-icon');
+  icon.innerHTML = qOpen
+    ? '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'
+    : '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>';
+  if (qOpen) renderQnotas();
+}
+
+function renderQnotas() {
+  const el = document.getElementById('qp-list');
+  if (!data.qnotas.length) {
+    el.innerHTML = '<div class="empty-msg" style="padding:12px;font-size:11px">Sin notas rápidas</div>';
+    return;
+  }
+  el.innerHTML = [...data.qnotas].reverse().map(n => `
+    <div class="qnote">
+      <div class="qtxt">${n.txt}</div>
+      <div class="qdate">${n.fecha}</div>
+      <button class="qdel" onclick="eliminarQnota(${n.id})">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>`).join('');
+}
+
+function agregarQnota() {
+  const txt = document.getElementById('qp-text').value.trim();
+  if (!txt) return;
+  const now = new Date();
+  data.qnotas.push({
+    id: Date.now(),
+    txt,
+    fecha: now.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+  });
+  document.getElementById('qp-text').value = '';
+  save(); renderQnotas();
+}
+
+function eliminarQnota(id) {
+  data.qnotas = data.qnotas.filter(n => n.id !== id);
+  save(); renderQnotas();
+}
+
+// PWA Install prompt
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('install-banner').classList.add('show');
+});
+document.getElementById('install-btn').addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  document.getElementById('install-banner').classList.remove('show');
+});
+document.getElementById('install-dismiss').addEventListener('click', () => {
+  document.getElementById('install-banner').classList.remove('show');
+});
+
+// Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+renderInbox();
+</script>
+</body>
+</html>
