@@ -2,7 +2,7 @@
   "name": "Planificador — Mictlán del tiempo",
   "short_name": "Planificador",
   "description": "Organiza tus actividades con buzón, tablero Kanban y calendario",
-  "start_url": "./planificador.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0a0a0d",
   "theme_color": "#0a0a0d",
