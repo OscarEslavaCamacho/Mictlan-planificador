@@ -633,7 +633,7 @@ function renderResumen() {
     const s = getSaldo(c);
     if (c.tipo==='efectivo') efect += s;
     if (c.tipo==='debito') debit += s;
-    if (c.tipo==='credito') { limTotal+=Number(c.limite||0); deudaTotal+=Math.max(0,-s); }
+    if (c.tipo==='credito') { const lim=Number(c.limite||0); limTotal+=lim; deudaTotal+=Math.max(0, lim-s); }
   });
   const disponible = efect + debit;
   const pct = limTotal>0 ? Math.min(100,(deudaTotal/limTotal)*100) : 0;
@@ -675,8 +675,8 @@ function ccHtml(c, acciones) {
   let creditBlock = '';
   if (c.tipo==='credito') {
     const lim = Number(c.limite||0);
-    const deuda = Math.max(0,-s);
-    const disp = lim - deuda;
+    const deuda = Math.max(0, lim - s);
+    const disp = Math.max(0, s);
     const p = lim>0 ? Math.min(100,(deuda/lim)*100) : 0;
     const col = p>80?'var(--danger)':p>50?'var(--warning)':'var(--success)';
     creditBlock = `
@@ -691,8 +691,10 @@ function ccHtml(c, acciones) {
         <div class="cc-tipo"><span class="bt ${badgeClass}">${tipoLabel}</span></div>
       </div>
       <div style="text-align:right">
-        <div class="cc-saldo ${s>=0?'pos':'neg'}">${fmt(s)}</div>
-        <div class="cc-meta">${c.tipo==='credito'?'saldo disponible':'saldo actual'}</div>
+        <div class="cc-saldo ${c.tipo==='credito' ? (lim-s>0?'neg':'pos') : (s>=0?'pos':'neg')}">
+          ${c.tipo==='credito' ? fmt(Math.max(0,lim-s)) : fmt(s)}
+        </div>
+        <div class="cc-meta">${c.tipo==='credito'?'deuda actual':'saldo actual'}</div>
       </div>
     </div>
     ${creditBlock}
