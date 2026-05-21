@@ -325,7 +325,7 @@ select option{background:var(--bg2)}
           <option value="debito">Tarjeta de débito</option>
           <option value="efectivo">Efectivo</option>
         </select>
-        <div id="nc-limite-wrap">
+        <div id="nc-limite-wrap" style="display:none">
           <label>Límite de crédito ($)</label>
           <input type="number" id="nc-limite" placeholder="0.00" min="0">
         </div>
@@ -406,7 +406,7 @@ select option{background:var(--bg2)}
 </div>
 
 <!-- PWA install banner -->
-<div id="install-banner" style="display:none;position:fixed;top:0;left:0;right:0;background:var(--bg2);border-bottom:0.5px solid var(--acc3);padding:10px 14px;z-index:200;display:none;align-items:center;gap:10px">
+<div id="install-banner" style="display:none;position:fixed;top:0;left:0;right:0;background:var(--bg2);border-bottom:0.5px solid var(--acc3);padding:10px 14px;z-index:200;align-items:center;gap:10px">
   <span style="flex:1;font-size:12px;color:var(--tx1)"><strong style="color:var(--tx0)">Instalar app</strong> — agrega a tu pantalla de inicio</span>
   <button class="btn btn-sm btn-success" id="install-btn">Instalar</button>
   <button class="btn btn-sm btn-danger" id="install-x">✕</button>
@@ -416,11 +416,11 @@ select option{background:var(--bg2)}
 // ── DATOS ──
 let D = JSON.parse(localStorage.getItem('plan_v2') || '{"inbox":[],"tablero":{"todo":[],"today":[],"shop":[]},"notas":{},"qnotas":[]}');
 let F = JSON.parse(localStorage.getItem('fin_v2') || '{"cuentas":[],"movs":[]}');
-let calY, calM, calSel = null, notesOpen = false;
+let calY = new Date().getFullYear(), calM = new Date().getMonth(), calSel = null, notesOpen = false;
 
 const saveD = () => localStorage.setItem('plan_v2', JSON.stringify(D));
 const saveF = () => localStorage.setItem('fin_v2', JSON.stringify(F));
-const fmt = n => '$' + Number(n||0).toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2});
+const fmt = n => { const v = Number(n||0); return '$' + (isNaN(v)?'0.00':v.toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2})); };
 
 // ── TABS PRINCIPAL ──
 function showTab(t) {
@@ -439,7 +439,7 @@ function agregarActividad() {
   D.inbox.push({
     id: Date.now(), titulo,
     nota: document.getElementById('act-nota').value.trim(),
-    minutos: document.getElementById('act-min').value,
+    minutos: Number(document.getElementById('act-min').value) || 0,
     hora: document.getElementById('act-hora').value,
     fecha: document.getElementById('act-fecha').value
   });
@@ -514,7 +514,6 @@ function delT(id, col) { D.tablero[col] = D.tablero[col].filter(a => a.id!==id);
 // ── CALENDARIO ──
 function renderCal() {
   const now = new Date();
-  if (calY===undefined) { calY=now.getFullYear(); calM=now.getMonth(); }
   const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   document.getElementById('cal-titulo').textContent = meses[calM]+' '+calY;
   const dias = ['D','L','M','X','J','V','S'];
@@ -704,6 +703,8 @@ function toggleLimite() {
   document.getElementById('nc-limite-wrap').style.display =
     document.getElementById('nc-tipo').value==='credito' ? 'block' : 'none';
 }
+// Inicializar visibilidad del campo límite según valor por defecto
+toggleLimite();
 function crearCuenta() {
   const nombre = document.getElementById('nc-nombre').value.trim();
   if (!nombre) return;
@@ -743,9 +744,14 @@ function registrarMov() {
   const desc = document.getElementById('mov-desc').value.trim() || tipo;
   const fecha = document.getElementById('mov-fecha').value || new Date().toISOString().split('T')[0];
   if (!monto||!cId) return;
-  const mov = {id:Date.now(), tipo, cId, monto, desc, fecha};
-  if (tipo==='transferencia') mov.dId = Number(document.getElementById('mov-destino').value);
-  F.movs.push(mov);
+  if (tipo==='transferencia') {
+    const dId = Number(document.getElementById('mov-destino').value);
+    if (cId===dId) { alert('La cuenta origen y destino no pueden ser la misma.'); return; }
+    const mov = {id:Date.now(), tipo, cId, monto, desc, fecha, dId};
+    F.movs.push(mov);
+  } else {
+    F.movs.push({id:Date.now(), tipo, cId, monto, desc, fecha});
+  }
   saveF();
   ['mov-monto','mov-desc','mov-fecha'].forEach(id=>document.getElementById(id).value='');
   showFin('resumen');
@@ -778,7 +784,13 @@ function renderHist() {
       </div>
     </div>`).join('');
 }
-function delMov(id) { F.movs=F.movs.filter(m=>m.id!==id); saveF(); renderHist(); }
+function delMov(id) {
+  F.movs = F.movs.filter(m=>m.id!==id);
+  saveF();
+  renderHist();
+  // Refrescar resumen si está activo para reflejar el saldo actualizado
+  if (document.getElementById('fsec-resumen').classList.contains('active')) renderResumen();
+}
 
 // ── UTILS ──
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
