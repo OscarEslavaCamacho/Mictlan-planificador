@@ -414,12 +414,17 @@ select option{background:var(--bg2)}
 
 <script>
 // ── DATOS ──
-let D = JSON.parse(localStorage.getItem('plan_v2') || '{"inbox":[],"tablero":{"todo":[],"today":[],"shop":[]},"notas":{},"qnotas":[]}');
-let F = JSON.parse(localStorage.getItem('fin_v2') || '{"cuentas":[],"movs":[]}');
+let D = JSON.parse(localStorage.getItem('plan_v2') || '{"inbox":[],"tablero":{"todo":[],"today":[],"shop":[]},"notas":{},"qnotas":[],"nextId":0}');
+let F = JSON.parse(localStorage.getItem('fin_v2') || '{"cuentas":[],"movs":[],"nextId":0}');
+// Migración: garantizar nextId si viene de versión anterior
+if (!D.nextId) D.nextId = 0;
+if (!F.nextId) F.nextId = 0;
 let calY = new Date().getFullYear(), calM = new Date().getMonth(), calSel = null, notesOpen = false;
 
 const saveD = () => localStorage.setItem('plan_v2', JSON.stringify(D));
 const saveF = () => localStorage.setItem('fin_v2', JSON.stringify(F));
+function nextDId() { D.nextId = (D.nextId||0)+1; return D.nextId; }
+function nextFId() { F.nextId = (F.nextId||0)+1; return F.nextId; }
 const fmt = n => { const v = Number(n||0); return '$' + (isNaN(v)?'0.00':v.toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2})); };
 
 // ── TABS PRINCIPAL ──
@@ -437,7 +442,7 @@ function agregarActividad() {
   const titulo = document.getElementById('act-titulo').value.trim();
   if (!titulo) return;
   D.inbox.push({
-    id: Date.now(), titulo,
+    id: nextDId(), titulo,
     nota: document.getElementById('act-nota').value.trim(),
     minutos: Number(document.getElementById('act-min').value) || 0,
     hora: document.getElementById('act-hora').value,
@@ -541,7 +546,12 @@ function mostrarNota(key) {
 }
 function guardarNota() {
   if (!calSel) return;
-  D.notas[calSel] = document.getElementById('note-text').value;
+  const txt = document.getElementById('note-text').value.trim();
+  if (txt) {
+    D.notas[calSel] = txt;
+  } else {
+    delete D.notas[calSel];
+  }
   saveD(); renderCal();
 }
 
@@ -566,7 +576,7 @@ function addNota() {
   const txt = document.getElementById('np-text').value.trim();
   if (!txt) return;
   const now = new Date();
-  D.qnotas.push({id:Date.now(), txt, fecha: now.toLocaleDateString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})});
+  D.qnotas.push({id:nextDId(), txt, fecha: now.toLocaleDateString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})});
   document.getElementById('np-text').value = '';
   saveD(); renderNotas();
 }
@@ -574,6 +584,8 @@ function delNota(id) { D.qnotas = D.qnotas.filter(n=>n.id!==id); saveD(); render
 
 // ── NAVEGACIÓN FINANZAS ──
 function abrirFinanzas() {
+  // Cerrar panel de notas si está abierto
+  if (notesOpen) toggleNotes();
   document.getElementById('fin-screen').classList.add('active');
   rellenarSelects();
   showFin('resumen');
@@ -593,7 +605,11 @@ function showFin(t) {
   if (t==='resumen') renderResumen();
   if (t==='cuentas') renderCuentas();
   if (t==='historial') { rellenarFiltro(); renderHist(); }
-  if (t==='movimiento') rellenarSelects();
+  if (t==='movimiento') {
+    rellenarSelects();
+    const hoy = new Date().toISOString().split('T')[0];
+    if (!document.getElementById('mov-fecha').value) document.getElementById('mov-fecha').value = hoy;
+  }
 }
 
 // ── SALDO CALCULADO ──
@@ -704,13 +720,13 @@ function toggleLimite() {
     document.getElementById('nc-tipo').value==='credito' ? 'block' : 'none';
 }
 // Inicializar visibilidad del campo límite según valor por defecto
-toggleLimite();
+document.addEventListener('DOMContentLoaded', toggleLimite);
 function crearCuenta() {
   const nombre = document.getElementById('nc-nombre').value.trim();
   if (!nombre) return;
   const tipo = document.getElementById('nc-tipo').value;
   F.cuentas.push({
-    id: Date.now(), nombre, tipo,
+    id: nextFId(), nombre, tipo,
     limite: tipo==='credito' ? Number(document.getElementById('nc-limite').value||0) : 0,
     saldoInicial: Number(document.getElementById('nc-saldo').value||0),
     color: document.getElementById('nc-color').value
@@ -743,14 +759,15 @@ function registrarMov() {
   const monto = Number(document.getElementById('mov-monto').value);
   const desc = document.getElementById('mov-desc').value.trim() || tipo;
   const fecha = document.getElementById('mov-fecha').value || new Date().toISOString().split('T')[0];
-  if (!monto||!cId) return;
+  if (!cId) return;
+  if (monto <= 0) { alert('El monto debe ser mayor a cero.'); return; }
   if (tipo==='transferencia') {
     const dId = Number(document.getElementById('mov-destino').value);
     if (cId===dId) { alert('La cuenta origen y destino no pueden ser la misma.'); return; }
-    const mov = {id:Date.now(), tipo, cId, monto, desc, fecha, dId};
+    const mov = {id:nextFId(), tipo, cId, monto, desc, fecha, dId};
     F.movs.push(mov);
   } else {
-    F.movs.push({id:Date.now(), tipo, cId, monto, desc, fecha});
+    F.movs.push({id:nextFId(), tipo, cId, monto, desc, fecha});
   }
   saveF();
   ['mov-monto','mov-desc','mov-fecha'].forEach(id=>document.getElementById(id).value='');
@@ -766,7 +783,7 @@ function rellenarFiltro() {
 function renderHist() {
   const f = document.getElementById('hist-filtro').value;
   let movs = [...F.movs].reverse();
-  if (f!=='todos') movs = movs.filter(m=>m.cId==f||m.dId==f);
+  if (f!=='todos') { const fId=Number(f); movs = movs.filter(m=>m.cId===fId||m.dId===fId); }
   const el = document.getElementById('hist-lista');
   if (!movs.length) { el.innerHTML='<div class="empty">Sin movimientos</div>'; return; }
   const nombre = id => { const c=F.cuentas.find(c=>c.id==id); return c?esc(c.nombre):'?'; };
