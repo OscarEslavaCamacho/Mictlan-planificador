@@ -419,6 +419,17 @@ let F = JSON.parse(localStorage.getItem('fin_v2') || '{"cuentas":[],"movs":[],"n
 // Migración: garantizar nextId si viene de versión anterior
 if (!D.nextId) D.nextId = 0;
 if (!F.nextId) F.nextId = 0;
+// Migración: si cuenta de crédito tiene saldoInicial=0 y limite>0,
+// inicializar disponible = limite (sin deuda al crear)
+F.cuentas.forEach(c => {
+  if (c.tipo==='credito' && !c._migrado) {
+    if (c.saldoInicial === 0 && Number(c.limite||0) > 0) {
+      c.saldoInicial = Number(c.limite);
+    }
+    c._migrado = true;
+  }
+});
+localStorage.setItem('fin_v2', JSON.stringify(F));
 let calY = new Date().getFullYear(), calM = new Date().getMonth(), calSel = null, notesOpen = false;
 
 const saveD = () => localStorage.setItem('plan_v2', JSON.stringify(D));
@@ -673,6 +684,7 @@ function ccHtml(c, acciones) {
   const tipoLabel = {credito:'Crédito',debito:'Débito',efectivo:'Efectivo'}[c.tipo];
   const badgeClass = {credito:'bt-credito',debito:'bt-debito',efectivo:'bt-efectivo'}[c.tipo];
   let creditBlock = '';
+  let saldoDisplay, saldoClass, saldoLabel;
   if (c.tipo==='credito') {
     const lim = Number(c.limite||0);
     const deuda = Math.max(0, lim - s);
@@ -682,6 +694,13 @@ function ccHtml(c, acciones) {
     creditBlock = `
       <div class="credit-bar"><div class="credit-fill" style="width:${p}%;background:${col}"></div></div>
       <div class="credit-info"><span>Deuda: ${fmt(deuda)}</span><span>Disponible: ${fmt(disp)}</span></div>`;
+    saldoDisplay = fmt(deuda);
+    saldoClass = deuda > 0 ? 'neg' : 'pos';
+    saldoLabel = 'deuda actual';
+  } else {
+    saldoDisplay = fmt(s);
+    saldoClass = s >= 0 ? 'pos' : 'neg';
+    saldoLabel = 'saldo actual';
   }
   return `<div class="cc">
     <div class="cc-top">
@@ -691,10 +710,8 @@ function ccHtml(c, acciones) {
         <div class="cc-tipo"><span class="bt ${badgeClass}">${tipoLabel}</span></div>
       </div>
       <div style="text-align:right">
-        <div class="cc-saldo ${c.tipo==='credito' ? (lim-s>0?'neg':'pos') : (s>=0?'pos':'neg')}">
-          ${c.tipo==='credito' ? fmt(Math.max(0,lim-s)) : fmt(s)}
-        </div>
-        <div class="cc-meta">${c.tipo==='credito'?'deuda actual':'saldo actual'}</div>
+        <div class="cc-saldo ${saldoClass}">${saldoDisplay}</div>
+        <div class="cc-meta">${saldoLabel}</div>
       </div>
     </div>
     ${creditBlock}
